@@ -20,7 +20,6 @@ cat > ca-config.json <<EOF
     }
   }
 }
-
 EOF
 
 cat > ca-csr.json <<EOF
@@ -35,7 +34,7 @@ cat > ca-csr.json <<EOF
       "C": "CN",
       "ST": "FuZhou",
       "L": "FuZhou",
-      "O": "k8s",
+      "O": "kubernetes",
       "OU": "System"
     }
   ],
@@ -43,7 +42,7 @@ cat > ca-csr.json <<EOF
     "expiry": "876000h"
   }
 }
-
+EOF
 cfssl gencert -initca ca-csr.json | cfssljson -bare ca
 
 
@@ -52,6 +51,45 @@ ca-key.pem
 ca.pem
 
 -------------------------
+ETCD
+-----------------
+cat > etcd-csr.json <<EOF
+{
+  "CN": "etcd",
+  "hosts": [
+    "127.0.0.1",
+    "172.16.32.111",
+    "172.16.32.112",
+    "172.16.32.113"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "FuZhou",
+      "L": "FuZhou",
+      "O": "kubernetes",
+      "OU": "System"
+    }
+  ]
+}
+EOF
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -profile=kubernetes \
+  etcd-csr.json | cfssljson -bare etcd
+
+Results:
+etcd-key.pem
+etcd.pem
+
+--------------------------------------------
+
 
 
 ----------------------------------
