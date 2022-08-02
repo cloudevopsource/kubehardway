@@ -107,6 +107,7 @@ cat > kubernetes-csr.json <<EOF
     "172.16.32.111",
     "172.16.32.112",
     "172.16.32.113",
+    "10.254.0.1",
     "kubernetes",
     "kubernetes.default",
     "kubernetes.default.svc",
@@ -132,7 +133,6 @@ cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=${CLUSTER_KUBERNETES_SVC_IP},${MASTER_NAMES},${MASTER_FQDN_NAMES} \
   -profile=kubernetes \
   kubernetes-csr.json | cfssljson -bare kubernetes
   
