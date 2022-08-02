@@ -1,0 +1,363 @@
+------------
+CA
+------------
+cat > ca-config.json <<EOF
+{
+  "signing": {
+    "default": {
+      "expiry": "87600h"
+    },
+    "profiles": {
+      "kubernetes": {
+        "usages": [
+            "signing",
+            "key encipherment",
+            "server auth",
+            "client auth"
+        ],
+        "expiry": "876000h"
+      }
+    }
+  }
+}
+
+EOF
+
+cat > ca-csr.json <<EOF
+{
+  "CN": "kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "FuZhou",
+      "L": "FuZhou",
+      "O": "k8s",
+      "OU": "System"
+    }
+  ],
+  "ca": {
+    "expiry": "876000h"
+  }
+}
+
+cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+
+
+Results:
+ca-key.pem
+ca.pem
+
+-------------------------
+
+
+----------------------------------
+The Kubernetes API Server Certificate
+-----------------------------------
+cat > kubernetes-csr.json <<EOF
+{
+  "CN": "kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "FuZhou",
+      "L": "FuZhou",
+      "O": "system:masters",
+      "OU": "System"
+    }
+  ]
+}
+EOF
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} \
+  -profile=kubernetes \
+  kubernetes-csr.json | cfssljson -bare kubernetes
+  
+  
+Results:
+kubernetes-key.pem
+kubernetes.pem
+--------------------------------------
+
+
+
+
+
+
+
+--------------------------------
+The Admin Client Certificate
+-------------------------------
+
+cat > admin-csr.json <<EOF
+{
+  "CN": "admin",
+  "hosts": [
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "FuZhou",
+      "L": "FuZhou",
+      "O": "system:masters",
+      "OU": "System"
+    }
+  ]
+}
+EOF
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -profile=kubernetes \
+  admin-csr.json | cfssljson -bare admin
+  
+  
+Results:
+admin-key.pem
+admin.pem
+  
+------------------------------
+  "CN": "kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "US",
+      "L": "Portland",
+      "O": "Kubernetes",
+      "OU": "Kubernetes The Hard Way",
+      "ST": "Oregon"
+    }
+  ]
+}
+EOF
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} \
+  -profile=kubernetes \
+  kubernetes-csr.json | cfssljson -bare kubernetes
+  
+  
+  
+
+  
+ 
+-----------------------------------------
+Kubelet Client Certificates
+----------------------------------
+
+
+for node_names,node_ips in ${NODE_NAMES[@]} ${NODE_IPS[@]}; do
+cat > kubelet-${node_names}-csr.json <<EOF
+{
+  "CN": "system:node:${node_names}",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+    "C": "CN",
+    "ST": "FuZhou",
+    "L": "FuZhou",
+    "O": "system:nodes",
+    "OU": "System"
+    }
+  ]
+
+}
+EOF
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -hostname=${node_names},${node_names}.fzport,${node_ips} \
+  -profile=kubernetes \
+  $kubelet-${node_names}-csr.json | cfssljson -bare kubelet-${node_names}}
+done
+
+
+Results:
+kubelet-tsk8s1-key.pem
+kubelet-tsk8s1.pem
+kubelet-tsk8s2-key.pem
+kubelet-tsk8s2.pem
+kubelet-tsk8s3-key.pem
+kubelet-tsk8s3.pem
+-------------------------
+
+
+------------------------------------
+The Controller Manager Client Certificate
+----------------------------------
+cat > kube-controller-manager-csr.json <<EOF
+{
+    "CN": "system:kube-controller-manager",
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "hosts": [
+      "127.0.0.1",
+      "172.16.32.111",
+      "172.16.32.112",
+      "172.16.32.113"
+    ],
+    "names": [
+      {
+       "C": "CN",
+       "ST": "FuZhou",
+       "L": "FuZhou",
+       "O": "system:kube-controller-manager",
+       "OU": "System"
+      }
+    ]
+
+}
+EOF
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -profile=kubernetes \
+  kube-controller-manager-csr.json | cfssljson -bare kube-controller-manager
+
+Results:
+
+kube-controller-manager-key.pem
+kube-controller-manager.pem
+
+---------------------------------
+
+
+-------------------------------
+The Scheduler Client Certificate
+-------------------------
+cat > kube-scheduler-csr.json <<EOF
+{
+    "CN": "system:kube-scheduler",
+    "hosts": [
+      "127.0.0.1",
+      "172.16.32.111",
+      "172.16.32.112",
+      "172.16.32.113"
+    ],
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+      {
+        "C": "CN",
+        "ST": "FuZhou",
+        "L": "FuZhou",
+        "O": "system:kube-scheduler",
+        "OU": "System"
+      }
+    ]
+}
+EOF
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -profile=kubernetes \
+  kube-scheduler-csr.json | cfssljson -bare kube-scheduler
+
+
+
+
+------------------------
+The Kube Proxy Client Certificate
+------------------------
+
+cat > kube-proxy-csr.json <<EOF
+{
+  "CN": "system:kube-proxy",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "FuZhou",
+      "L": "FuZhou",
+      "O": "k8s",
+      "OU": "System"
+    }
+  ]
+}
+EOF
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -profile=kubernetes \
+  kube-proxy-csr.json | cfssljson -bare kube-proxy
+  
+ Results:
+kube-proxy-key.pem
+kube-proxy.pem 
+  
+
+---------------
+The Service Account Key Pair
+------------------------------
+cat > service-account-csr.json <<EOF
+{
+  "CN": "service-accounts",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "FuZhou",
+      "L": "FuZhou",
+      "O": "system:masters",
+      "OU": "System"
+    }
+  ]
+}
+EOF
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -profile=kubernetes \
+  service-account-csr.json | cfssljson -bare service-account
+  
+
+Results:
+
+service-account-key.pem
+service-account.pem
