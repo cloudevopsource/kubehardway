@@ -59,28 +59,42 @@ The Kubernetes API Server Certificate
 -----------------------------------
 cat > kubernetes-csr.json <<EOF
 {
-  "CN": "kubernetes",
+  "CN": "kube-apiserver",
   "key": {
     "algo": "rsa",
     "size": 2048
   },
+  "hosts": [
+    "127.0.0.1",
+    "172.16.32.111",
+    "172.16.32.112",
+    "172.16.32.113",
+    "kubernetes",
+    "kubernetes.default",
+    "kubernetes.default.svc",
+    "kubernetes.default.svc.cluster",
+    "kubernetes.default.svc.cluster.local.",
+    "kubernetes.default.svc.cluster.local."
+  ],
   "names": [
     {
       "C": "CN",
       "ST": "FuZhou",
       "L": "FuZhou",
-      "O": "system:masters",
+      "O": "kubernetes",
       "OU": "System"
     }
   ]
 }
 EOF
 
+source /usr/local/k8s/bin/environment.sh
+cd /etc/kubernetes/cert/
 cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} \
+  -hostname=${CLUSTER_KUBERNETES_SVC_IP},${MASTER_NAMES},${MASTER_FQDN_NAMES} \
   -profile=kubernetes \
   kubernetes-csr.json | cfssljson -bare kubernetes
   
@@ -151,14 +165,14 @@ admin.pem
 }
 EOF
 
+source /usr/local/k8s/bin/environment.sh
+cd /etc/kubernetes/cert/
 cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} \
   -profile=kubernetes \
-  kubernetes-csr.json | cfssljson -bare kubernetes
-  
+  admin-csr.json | cfssljson -bare admin
   
   
 
@@ -168,11 +182,11 @@ cfssl gencert \
 Kubelet Client Certificates
 ----------------------------------
 
-
-for node_names,node_ips in ${NODE_NAMES[@]} ${NODE_IPS[@]}; do
-cat > kubelet-${node_names}-csr.json <<EOF
+for ((i=0; i<6; i++));
+do
+cat > kubelet-${NODE_NAMES[$i]}-csr.json <<EOF
 {
-  "CN": "system:node:${node_names}",
+  "CN": "system:node:${NODE_NAMES[$i]}",
   "key": {
     "algo": "rsa",
     "size": 2048
@@ -186,17 +200,18 @@ cat > kubelet-${node_names}-csr.json <<EOF
     "OU": "System"
     }
   ]
-
 }
 EOF
 
+source /usr/local/k8s/bin/environment.sh
+cd /etc/kubernetes/cert/
 cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=${node_names},${node_names}.fzport,${node_ips} \
+  -hostname=${NODE_NAMES[$i]},${NODE_NAMES[$i]}.fzport,${NODE_IPS[$i]} \
   -profile=kubernetes \
-  $kubelet-${node_names}-csr.json | cfssljson -bare kubelet-${node_names}}
+  kubelet-${NODE_NAMES[$i]}-csr.json | cfssljson -bare kubelet-${NODE_NAMES[$i]}
 done
 
 
@@ -308,7 +323,7 @@ cat > kube-proxy-csr.json <<EOF
       "C": "CN",
       "ST": "FuZhou",
       "L": "FuZhou",
-      "O": "k8s",
+      "O": "system:kube-proxy",
       "OU": "System"
     }
   ]
@@ -342,7 +357,7 @@ cat > service-account-csr.json <<EOF
       "C": "CN",
       "ST": "FuZhou",
       "L": "FuZhou",
-      "O": "system:masters",
+      "O": "kubernetes",
       "OU": "System"
     }
   ]
