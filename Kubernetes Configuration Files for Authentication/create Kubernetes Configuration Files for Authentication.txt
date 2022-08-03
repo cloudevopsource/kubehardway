@@ -10,7 +10,7 @@ for node_names in  ${NODE_NAMES[@]}; do
     --kubeconfig=kubelet-${node_names}.kubeconfig
 
   kubectl config set-credentials system:node:${node_names} \
-    --client-certificate=${node_names}.pem \
+    --client-certificate=kubelet-${node_names}.pem \
     --client-key=kubelet-${node_names}-key.pem \
     --embed-certs=true \
     --kubeconfig=kubelet-${node_names}.kubeconfig
