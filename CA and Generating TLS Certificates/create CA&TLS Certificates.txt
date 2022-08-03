@@ -229,6 +229,12 @@ cat > kubelet-${NODE_NAMES[$i]}-csr.json <<EOF
     "algo": "rsa",
     "size": 2048
   },
+  "hosts": [
+    "127.0.0.1",
+    "${NODE_IPS[$i]}",
+    "${NODE_NAMES[$i]}",
+    "${NODE_NAMES[$i]}.fzport"
+  ],
   "names": [
     {
     "C": "CN",
@@ -247,7 +253,6 @@ cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=${NODE_NAMES[$i]},${NODE_NAMES[$i]}.fzport,${NODE_IPS[$i]} \
   -profile=kubernetes \
   kubelet-${NODE_NAMES[$i]}-csr.json | cfssljson -bare kubelet-${NODE_NAMES[$i]}
 done
