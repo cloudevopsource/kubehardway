@@ -32,6 +32,15 @@ kubelet-tsk8s4.kubeconfig
 kubelet-tsk8s5.kubeconfig
 kubelet-tsk8s6.kubeconfig
 
+
+## 分发文件
+source /usr/local/k8s/bin/environment.sh
+for node_name in ${NODE_NAMES[@]}
+  do
+    echo ">>> ${node_name}"
+    scp kubelet-${node_name}.kubeconfig root@${node_name}:/etc/kubernetes/kubelet-${node_name}.kubeconfig
+  done
+
 -------------------
 kube-controller-manager Kubernetes Configuration File
 --------------------
